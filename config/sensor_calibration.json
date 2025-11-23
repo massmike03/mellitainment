@@ -1,0 +1,60 @@
+{
+    "description": "Sensor calibration configuration for ADC voltage-to-unit conversions",
+    "adc_reference_voltage": 5.0,
+    "sensors": {
+        "oil_pressure": {
+            "channel": 0,
+            "type": "linear",
+            "unit": "PSI",
+            "min_voltage": 0.0,
+            "max_voltage": 5.0,
+            "min_value": 0,
+            "max_value": 100,
+            "notes": "Standard 0-100 PSI sender with 0-5V output"
+        },
+        "water_temp": {
+            "channel": 1,
+            "type": "resistance_lookup",
+            "unit": "°F",
+            "notes": "Resistance-based temperature sender. Requires lookup table or Steinhart-Hart equation.",
+            "lookup_table": [
+                {
+                    "resistance_ohms": 1400,
+                    "temp_f": 100
+                },
+                {
+                    "resistance_ohms": 1150,
+                    "temp_f": 120
+                },
+                {
+                    "resistance_ohms": 650,
+                    "temp_f": 160
+                },
+                {
+                    "resistance_ohms": 270,
+                    "temp_f": 200
+                },
+                {
+                    "resistance_ohms": 73,
+                    "temp_f": 250
+                }
+            ],
+            "voltage_divider": {
+                "r_fixed": 1000,
+                "notes": "Fixed resistor in voltage divider circuit (ohms)"
+            }
+        },
+        "voltage": {
+            "channel": 2,
+            "type": "voltage_divider",
+            "unit": "V",
+            "divider_ratio": 3.0,
+            "notes": "3:1 voltage divider for 12V battery monitoring (15V max input = 5V ADC)"
+        }
+    },
+    "ema_smoothing": {
+        "enabled": true,
+        "alpha": 0.2,
+        "notes": "Exponential Moving Average smoothing factor (0-1). Lower = more smoothing."
+    }
+}

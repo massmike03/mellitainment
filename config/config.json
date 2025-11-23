@@ -1,0 +1,92 @@
+{
+    "display": {
+        "width": 800,
+        "height": 480,
+        "fps": 60,
+        "description": "Screen resolution for CarPlay and UI rendering"
+    },
+    "sensors": {
+        "enabled": true,
+        "mock_mode": true,
+        "update_interval_ms": 1000,
+        "smoothing": {
+            "enabled": true,
+            "alpha": 0.2,
+            "description": "Exponential Moving Average smoothing factor (0-1). Lower = more smoothing."
+        },
+        "calibration": {
+            "oil_pressure": {
+                "channel": 0,
+                "type": "linear",
+                "unit": "PSI",
+                "min_voltage": 0.0,
+                "max_voltage": 5.0,
+                "min_value": 0,
+                "max_value": 100
+            },
+            "water_temp": {
+                "channel": 1,
+                "type": "linear",
+                "unit": "°F",
+                "min_voltage": 0.0,
+                "max_voltage": 5.0,
+                "min_value": 50,
+                "max_value": 200,
+                "notes": "Linear mapping - adjust for resistance-based senders"
+            },
+            "voltage": {
+                "channel": 2,
+                "type": "voltage_divider",
+                "unit": "V",
+                "divider_ratio": 3.0,
+                "notes": "3:1 voltage divider for 12V battery monitoring"
+            }
+        },
+        "thresholds": {
+            "oil_pressure": {
+                "min": 10,
+                "max": 90,
+                "description": "PSI - triggers visual warning"
+            },
+            "water_temp": {
+                "max": 220,
+                "description": "°F - triggers visual warning"
+            },
+            "voltage": {
+                "min": 11.5,
+                "max": 15.0,
+                "description": "V - triggers visual warning"
+            }
+        }
+    },
+    "carplay": {
+        "enabled": true,
+        "port": 5006,
+        "config": {
+            "dpi": 480,
+            "nightMode": 0,
+            "hand": 0,
+            "boxName": "nodePlay",
+            "width": 800,
+            "height": 480,
+            "fps": 60
+        }
+    },
+    "backend": {
+        "host": "0.0.0.0",
+        "port": 5001,
+        "debug": true
+    },
+    "frontend": {
+        "port": 5173,
+        "api_url": "http://localhost:5001",
+        "carplay_url": "http://localhost:5006"
+    },
+    "ui": {
+        "visual_warnings": {
+            "enabled": true,
+            "min_duration_ms": 2000,
+            "description": "Flash gauges when thresholds exceeded"
+        }
+    }
+}

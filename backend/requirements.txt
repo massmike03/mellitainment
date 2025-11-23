@@ -1,0 +1,11 @@
+flask
+flask-socketio
+requests
+python-socketio
+websocket-client
+urllib3<2
+adafruit-circuitpython-ads1x15
+adafruit-blinka
+python-dotenv
+flask-cors
+pyserial

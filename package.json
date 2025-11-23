@@ -1,0 +1,11 @@
+{
+    "name": "mellitainment-simulators",
+    "version": "1.0.0",
+    "description": "Simulation scripts for Mellitainment",
+    "scripts": {
+        "simulate:carplay": "node simulate_carplay.js"
+    },
+    "dependencies": {
+        "socket.io-client": "^4.8.1"
+    }
+}

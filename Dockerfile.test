@@ -1,0 +1,24 @@
+FROM debian:bullseye
+
+# Install sudo and basic tools needed for the script to start
+RUN apt-get update && apt-get install -y sudo curl
+
+# Create a user 'pi' to mimic the RPi environment
+RUN useradd -m -s /bin/bash pi && \
+    usermod -aG sudo pi && \
+    echo "pi ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+
+USER pi
+WORKDIR /home/pi/mellitainment
+
+# Copy project files
+COPY --chown=pi:pi . .
+
+# Run the setup script
+RUN ./setup.sh
+
+# Expose ports
+EXPOSE 5001 5006 5173
+
+# Start command
+CMD ["./start_services.sh"]

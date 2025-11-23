@@ -1,0 +1,20 @@
+# HDMI Configuration for 800x480 Display
+# Add these lines to /boot/config.txt on the Raspberry Pi
+
+# Force HDMI output even if no display is detected at boot
+hdmi_force_hotplug=1
+
+# Set HDMI group (2 = DMT, for computer monitors)
+hdmi_group=2
+
+# Set HDMI mode (87 = custom CVT mode)
+hdmi_mode=87
+
+# Define custom CVT mode: 800x480 @ 60Hz
+hdmi_cvt=800 480 60 6 0 0 0
+
+# Disable overscan (black borders)
+disable_overscan=1
+
+# Optional: Rotate display if needed (0=normal, 1=90°, 2=180°, 3=270°)
+# display_rotate=0
