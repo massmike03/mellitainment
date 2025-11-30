@@ -1,12 +1,20 @@
+import './App.css';
 import React, { useState, useEffect, useRef } from 'react';
-import io from 'socket.io-client';
+import { io } from 'socket.io-client';
 import Dashboard from './components/Dashboard';
 import CarPlay from './components/CarPlay';
 import Equalizer from './components/Equalizer';
 import { LayoutDashboard, Smartphone, Settings, Battery, BatteryCharging, AudioLines } from 'lucide-react';
 import logo from './assets/logo.png';
 
-const socket = io('http://localhost:5001');
+// Use current hostname for API. 
+// Priority: 
+// 1. VITE_API_HOST env var (for local dev override)
+// 2. If on localhost, default to 'mellis-pi.local' (for remote debugging)
+// 3. Otherwise use window.location.hostname (for production/kiosk)
+const hostname = window.location.hostname;
+const API_HOST = import.meta.env.VITE_API_HOST || (hostname === 'localhost' || hostname === '127.0.0.1' ? 'mellis-pi.local' : hostname);
+const socket = io(`http://${API_HOST}:5001`);
 
 function App() {
   const [telemetry, setTelemetry] = useState({
@@ -52,7 +60,7 @@ function App() {
 
   // Fetch configuration from backend
   useEffect(() => {
-    fetch('http://localhost:5001/api/config')
+    fetch(`http://${API_HOST}:5001/api/config`)
       .then(res => res.json())
       .then(data => {
         setConfig(data);
@@ -88,7 +96,8 @@ function App() {
 
   // Listen for CarPlay status updates
   useEffect(() => {
-    const carplaySocket = io('http://localhost:5006');
+    const port = config?.carplay?.port || 5006;
+    const carplaySocket = io(`http://${API_HOST}:${port}`);
 
     carplaySocket.on('status', (data) => {
       setCarplayStatus(data.status);
@@ -249,6 +258,35 @@ function App() {
                     transition: 'left 0.3s ease',
                     boxShadow: '0 1px 3px rgba(0,0,0,0.3)'
                   }} />
+                </button>
+              </div>
+
+              {/* System Restart */}
+              <div className="setting-item" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '0.5rem', marginTop: '1rem' }}>
+                <div className="setting-label" style={{ marginRight: '2rem' }}>
+                  <h3 style={{ fontSize: '1rem', fontWeight: '600', color: 'var(--text-primary)' }}>System Restart</h3>
+                  <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Reboot the infotainment system</p>
+                </div>
+                <button
+                  onClick={() => {
+                    if (confirm('Are you sure you want to restart the system?')) {
+                      fetch(`http://${API_HOST}:5001/api/system/restart`, { method: 'POST' })
+                        .then(() => alert('System restarting...'))
+                        .catch(err => console.error('Restart failed:', err));
+                    }
+                  }}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+                    border: '1px solid var(--accent-red)',
+                    borderRadius: '0.375rem',
+                    color: 'var(--accent-red)',
+                    cursor: 'pointer',
+                    fontWeight: '600',
+                    fontSize: '0.875rem'
+                  }}
+                >
+                  Restart
                 </button>
               </div>
             </div>

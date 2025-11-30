@@ -146,12 +146,12 @@ This process is designed to be "Plug & Play". Once set up, the Pi will boot dire
 ### Step 2: Install Code
 1.  Boot the Pi and connect via SSH:
     ```bash
-    ssh pi@infotainment.local
+    ssh mellis@mellis-pi.local
     ```
 2.  Copy the project folder to the Pi:
     ```bash
     # Run this from your Mac terminal
-    scp -r ~/Code/mellitainment pi@infotainment.local:~/
+    rsync -avz --progress --exclude 'node_modules' --exclude '.git' --exclude '.venv' --exclude 'venv' --exclude '__pycache__' ~/Code/mellitainment mellis@mellis-pi.local:~/
     ```
 3.  Run the Setup Script:
     ```bash
@@ -394,6 +394,11 @@ LOG_LEVEL=INFO
 *   Check service status: `sudo systemctl status infotainment-carplay`
 *   Check logs: `journalctl -u infotainment-carplay -f`
 *   Verify dongle permissions: `ls -l /dev/bus/usb/*/*`
+*   **Dongle Settings/Update:**
+    *   Connect phone to dongle WiFi (`AutoKit_...`).
+    *   Open `http://192.168.43.1` (or `192.168.50.2`).
+    *   Try changing "Sync Mode" to "Compatible".
+    *   Check for Firmware Updates (requires Cellular Data on phone).
 
 ### Sensors Not Reading
 *   Verify I2C enabled: `sudo raspi-config nonint get_i2c` (should return 0)
@@ -403,7 +408,7 @@ LOG_LEVEL=INFO
 
 ### Display Issues
 *   **Wrong resolution**: Check `/boot/config.txt` has correct `hdmi_cvt` line
-*   **Not fullscreen**: Verify `/home/pi/.config/lxsession/LXDE-pi/autostart` has kiosk command
+*   **Not fullscreen**: Verify `/home/mellis/.config/lxsession/LXDE-pi/autostart` has kiosk command
 *   **Screen blanking**: Check autostart file has `@xset s off` lines
 
 ### Configuration Not Loading
@@ -590,3 +595,56 @@ python3 -m pytest tests/
 cd frontend
 npm test
 ```
+
+---
+
+## 12. CarPlay Integration
+
+### node-carplay Patches
+
+This project uses a **patched version** of `node-carplay` to support newer Carlinkit dongle firmware. The patches add support for message types 35, 36, 37, 38, and 163 which are sent by recent dongle firmware but not handled by the upstream library.
+
+**The patches are automatically applied** thanks to `patch-package`:
+- Patch file: `backend/patches/node-carplay+4.3.0.patch`
+- Auto-applied on `npm install` via `postinstall` script
+- No manual intervention needed!
+
+### What was patched:
+1. **Message Classes**: Added `UINightMode`, `UIColorMode`, `UIScaleMode`, `UISettingMessage`, and `PluginMessage` classes
+2. **Import Statements**: Updated to include new message classes  
+3. **Switch Cases**: Added handlers for message types 35-38 and 163
+
+### If CarPlay isn't working:
+
+**Dongle blinking blue:**
+- Ensure iPhone is connected to dongle's WiFi
+- Check if dongle appears in USB: `lsusb` (Linux) or `ioreg -p IOUSB -w 0 | grep -i auto` (Mac)
+- Try different USB port or powered USB hub
+- Restart CarPlay server: `cd backend && node carplay_server.mjs`
+
+**Patches not applying:**
+- Verify patch file exists: `ls backend/patches/`
+- Manually apply: `cd backend && npx patch-package`
+- Check postinstall ran: Review npm install output for "patch-package" messages
+
+**Mac-specific issues:**
+- macOS USB power limitations can affect dongle stability
+- Raspberry Pi deployment is recommended for production use
+- Use powered USB hub on Mac for testing
+
+### Dongle Settings
+
+Access dongle web interface (connect to dongle's WiFi first):
+- URL: `http://192.168.50.2` or `http://192.168.43.1`
+- Try changing "Sync Mode" to "Compatible"
+- Switch WiFi band to 2.4GHz if on 5GHz
+
+---
+
+## License
+
+MIT License - see LICENSE file for details.
+
+**Credits:**
+- `node-carplay` library by rhysmorgan134
+- Carlinkit CPC200-CCPA dongle

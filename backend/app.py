@@ -92,6 +92,18 @@ def system_control():
     # In real implementation, this would interact with system commands
     return jsonify({"status": "success", "message": "Control command received"})
 
+@app.route('/api/system/restart', methods=['POST'])
+def system_restart():
+    """Reboot the Raspberry Pi."""
+    print("🔄 System restart requested via API")
+    # Schedule reboot in 1 second to allow response to be sent
+    def reboot():
+        time.sleep(1)
+        os.system("sudo reboot")
+    
+    threading.Thread(target=reboot).start()
+    return jsonify({"status": "success", "message": "System restarting..."})
+
 @socketio.on('connect')
 def test_connect():
     print('Client connected')

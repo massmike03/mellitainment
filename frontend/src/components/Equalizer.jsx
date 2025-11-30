@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { RotateCcw } from 'lucide-react';
-import io from 'socket.io-client';
+import { io } from 'socket.io-client';
 
-const socket = io('http://localhost:5001');
+
+const hostname = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+const API_HOST = import.meta.env.VITE_API_HOST || (hostname === 'localhost' || hostname === '127.0.0.1' ? 'mellis-pi.local' : hostname);
+const socket = io(`http://${API_HOST}:5001`);
 
 const VerticalSlider = ({ value, onChange, min = -12, max = 12, step = 1 }) => {
     const containerRef = useRef(null);

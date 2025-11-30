@@ -20,7 +20,15 @@ const CarPlay = ({ config }) => {
 
         const connectToServer = () => {
             // Connect to the dedicated CarPlay streaming server
-            const carplayUrl = config?.frontend?.carplay_url || 'http://localhost:5006';
+            // Dynamically determine hostname to support both Kiosk (localhost) and Remote (LAN) access
+            const hostname = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+            // Priority: VITE_API_HOST -> mellis-pi.local (if localhost) -> hostname
+            const targetHost = import.meta.env.VITE_API_HOST || (hostname === 'localhost' || hostname === '127.0.0.1' ? 'mellis-pi.local' : hostname);
+            const port = config?.carplay?.port || 5006;
+            const carplayUrl = `http://${targetHost}:${port}`;
+
+            console.log(`Connecting to CarPlay Server at: ${carplayUrl}`);
+
             const socket = io(carplayUrl, {
                 reconnection: true,
                 reconnectionDelay: 1000,
@@ -62,8 +70,11 @@ const CarPlay = ({ config }) => {
             });
 
             socket.on('status', (data) => {
+                console.log('Received Status:', data);
                 if (data.status === 'waiting_for_device') {
                     setStatus('waiting');
+                } else {
+                    setStatus(data.status);
                 }
             });
 
@@ -116,20 +127,20 @@ const CarPlay = ({ config }) => {
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
 
-        // Scale coordinates to CarPlay resolution from config
-        const scaleX = carplayWidth / rect.width;
-        const scaleY = carplayHeight / rect.height;
+        // Normalize coordinates to 0-1 range (CarPlay expects normalized coords)
+        const normalizedX = x / rect.width;
+        const normalizedY = y / rect.height;
 
-        const targetX = Math.round(x * scaleX);
-        const targetY = Math.round(y * scaleY);
+        console.log(`Touch: click(${Math.round(x)}, ${Math.round(y)}) -> normalized(${normalizedX.toFixed(3)}, ${normalizedY.toFixed(3)})`);
 
         // Send 'down' and 'up' to simulate a tap
-        // In a real implementation, you'd handle touchstart/touchend separately for scrolling
-        socketRef.current.emit('click', { type: 14, x: targetX, y: targetY }); // 14 = Touch Down
+        socketRef.current.emit('click', { type: 14, x: normalizedX, y: normalizedY }); // 14 = Touch Down
         setTimeout(() => {
-            socketRef.current.emit('click', { type: 16, x: targetX, y: targetY }); // 16 = Touch Up
+            socketRef.current.emit('click', { type: 16, x: normalizedX, y: normalizedY }); // 16 = Touch Up
         }, 100);
     };
+
+    console.log('CarPlay Render Status:', status);
 
     return (
         <div className="carplay-wrapper">
@@ -146,6 +157,27 @@ const CarPlay = ({ config }) => {
                         <div className="status-message animate-pulse">
                             <Smartphone className="status-icon waiting" />
                             <h2 className="status-title">Connect your iPhone.</h2>
+                        </div>
+                    )}
+                    {status === 'error' && (
+                        <div className="status-message">
+                            <AlertCircle className="status-icon error" />
+                            <h2 className="status-title">Hardware Error</h2>
+                            <p className="status-subtitle">Dongle not detected or power issue.</p>
+                        </div>
+                    )}
+                    {status === 'connecting' && (
+                        <div className="status-message animate-pulse">
+                            <Smartphone className="status-icon waiting" />
+                            <h2 className="status-title">Starting Dongle...</h2>
+                            <p className="status-subtitle">Please wait.</p>
+                        </div>
+                    )}
+                    {status === 'connected' && (
+                        <div className="status-message">
+                            <Smartphone className="status-icon waiting" />
+                            <h2 className="status-title">Connected to Server</h2>
+                            <p className="status-subtitle">Waiting for status...</p>
                         </div>
                     )}
                 </div>

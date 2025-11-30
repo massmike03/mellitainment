@@ -1,7 +1,8 @@
 const io = require('socket.io-client');
 const { spawn } = require('child_process');
 
-const SERVER_URL = 'http://localhost:5006';
+const args = process.argv.slice(2);
+const SERVER_URL = args[0] || 'http://localhost:5006';
 const socket = io(SERVER_URL);
 
 console.log('Connecting to CarPlay Server at', SERVER_URL);

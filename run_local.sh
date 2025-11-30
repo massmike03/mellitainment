@@ -95,25 +95,32 @@ echo "Press Ctrl+C to stop all services"
 echo ""
 
 # Trap to kill all background processes on exit
-trap 'echo ""; echo "🛑 Stopping all services..."; kill $(jobs -p) 2>/dev/null; exit' INT TERM
+trap 'echo ""; echo "🛑 Stopping all services..."; kill $(jobs -p); exit' INT TERM
 
 # Start Backend
 cd "$BACKEND_DIR"
 source venv/bin/activate
 echo "Starting Backend (Flask)..."
-python3 app.py > /tmp/mellitainment-backend.log 2>&1 &
+python3 app.py &
 BACKEND_PID=$!
 
-# Start CarPlay Server
-echo "Starting CarPlay Server (Node.js)..."
-node carplay_server.mjs > /tmp/mellitainment-carplay.log 2>&1 &
+# Start CarPlay Server (with auto-restart for dongle unplugging)
+echo "Starting CarPlay Server (Node.js with auto-restart)..."
+(while true; do
+    node carplay_server.mjs || true
+    echo "⚠️  CarPlay Node exited. Restarting in 2s..."
+    sleep 2
+done) &
 CARPLAY_PID=$!
 
 # Start Frontend (foreground to see logs)
 cd "$FRONTEND_DIR"
 echo "Starting Frontend (Vite)..."
 echo ""
-npm run dev
+echo "💡 All service logs will be shown below"
+echo "💡 CarPlay will auto-restart if dongle is unplugged"
+echo ""
+VITE_API_HOST=localhost npm run dev
 
 # Wait for all background processes
 wait

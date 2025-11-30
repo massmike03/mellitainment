@@ -1,6 +1,12 @@
 {
+  "scripts": {
+    "postinstall": "patch-package"
+  },
   "dependencies": {
-    "node-carplay": "^4.1.0",
+    "node-carplay": "github:rhysmorgan134/node-carplay",
     "socket.io": "^4.8.1"
+  },
+  "devDependencies": {
+    "patch-package": "^8.0.1"
   }
 }

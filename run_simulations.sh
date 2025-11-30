@@ -16,13 +16,23 @@ SIM_SCRIPTS=(
     # Add more scripts here, eg., "./simulate_other.py"
 )
 
+# Default to localhost if no argument provided
+TARGET_HOST="${1:-localhost}"
+BACKEND_URL="http://$TARGET_HOST:5001"
+CARPLAY_URL="http://$TARGET_HOST:5006"
+
 echo "🚀 Starting Mellitainment simulation scripts..."
+echo "🎯 Target Host: $TARGET_HOST"
 
 # Check if Backend is running
-if ! curl -s http://localhost:5001 >/dev/null; then
-    echo "⚠️  WARNING: Backend does not appear to be running on http://localhost:5001"
+if ! curl -s "$BACKEND_URL" >/dev/null; then
+    echo "⚠️  WARNING: Backend does not appear to be running on $BACKEND_URL"
     echo "   Simulation scripts might fail to connect."
-    echo "   Please run './run_local.sh' in another terminal first."
+    if [ "$TARGET_HOST" == "localhost" ]; then
+        echo "   Please run './run_local.sh' in another terminal first."
+    else
+        echo "   Please ensure the backend is running on the remote device."
+    fi
     read -p "   Press ENTER to continue anyway, or Ctrl+C to abort..."
 fi
 
@@ -63,7 +73,8 @@ for script in "${SIM_SCRIPTS[@]}"; do
     if [ -f "$script" ]; then
         echo "📡 Launching simulation script: $script"
         chmod +x "$script"
-        "$script" &
+        # Pass the backend URL to the python script
+        "$script" --url "$BACKEND_URL" &
         SIM_PIDS+=($!) # Store PID
     else
         echo "⚠️ Simulation script not found: $script"
@@ -73,7 +84,8 @@ done
 # Start CarPlay Simulator
 if [ -f "simulate_carplay.js" ]; then
     echo "📺 Launching CarPlay Simulator..."
-    node simulate_carplay.js &
+    # Pass the CarPlay URL to the node script
+    node simulate_carplay.js "$CARPLAY_URL" &
     SIM_PIDS+=($!)
 else
     echo "⚠️  simulate_carplay.js not found."
