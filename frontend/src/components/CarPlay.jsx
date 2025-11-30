@@ -85,16 +85,42 @@ const CarPlay = ({ config }) => {
                     mode: 'video',
                     flushingTime: 0,
                     fps: config?.display?.fps || 60,
-                    debug: false,
+                    debug: true, // Enable debug to see NAL unit parsing
                 });
                 setJmuxer(muxer);
 
                 socket.on('video', (data) => {
                     // feed video data to jmuxer
                     // data is expected to be a Buffer or ArrayBuffer
+                    // Node-Carplay sends raw NAL units without start codes.
+                    // JMuxer expects Annex B format (00 00 00 01 + NAL)
+
+                    const rawData = new Uint8Array(data);
+
+                    // Debug: Log NAL Unit Type
+                    if (rawData.length > 0) {
+                        const nalType = rawData[0] & 0x1F;
+                        if (nalType === 7) console.log('✅ Received SPS (Sequence Parameter Set)');
+                        if (nalType === 8) console.log('✅ Received PPS (Picture Parameter Set)');
+                        if (nalType === 5) console.log('✅ Received IDR Frame (Keyframe)');
+                    }
+
+                    let nalUnit = rawData;
+
+                    // Check if it already has start code (00 00 00 01)
+                    if (rawData.length >= 4 && rawData[0] === 0 && rawData[1] === 0 && rawData[2] === 0 && rawData[3] === 1) {
+                        // Already has start code, use as is
+                    } else {
+                        // Prepend start code
+                        nalUnit = new Uint8Array(rawData.length + 4);
+                        nalUnit.set([0, 0, 0, 1], 0);
+                        nalUnit.set(rawData, 4);
+                    }
+
                     muxer.feed({
-                        video: new Uint8Array(data)
+                        video: nalUnit
                     });
+
                     // Update status to streaming when we receive video
                     if (status !== 'streaming') {
                         setStatus('streaming');

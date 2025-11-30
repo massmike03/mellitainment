@@ -188,29 +188,54 @@ WantedBy=multi-user.target
 EOF"
 echo "✅ CarPlay service created"
 
-# Frontend Service (Serve)
+# Frontend Service (Web Server)
 sudo npm install -g serve
 sudo bash -c "cat > /etc/systemd/system/infotainment-frontend.service <<EOF
 [Unit]
-Description=Mellitainment Frontend (Kiosk Mode)
-After=graphical.target
+Description=Mellitainment Frontend (Web Server)
+After=network.target
 
 [Service]
 Type=simple
 User=$USER
-Environment=DISPLAY=:0
-ExecStart=/usr/bin/chromium-browser --kiosk --disable-infobars --noerrdialogs --disable-session-crashed-bubble http://localhost:5173
+WorkingDirectory=$(pwd)/frontend
+ExecStart=$(which serve) -s dist -l 5173
 Restart=always
-RestartSec=5
+RestartSec=3
 # Log settings - 1 hour retention
 StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=mellitainment-frontend
 
 [Install]
+WantedBy=multi-user.target
+EOF"
+echo "✅ Frontend web server created"
+
+# Kiosk Service (Browser)
+sudo bash -c "cat > /etc/systemd/system/infotainment-kiosk.service <<EOF
+[Unit]
+Description=Mellitainment Kiosk Browser
+After=graphical.target infotainment-frontend.service
+
+[Service]
+Type=simple
+User=$USER
+Environment=DISPLAY=:0
+# Wait for web server to be ready
+ExecStartPre=/bin/sleep 5
+ExecStart=/usr/bin/chromium-browser --kiosk --disable-infobars --noerrdialogs --disable-session-crashed-bubble http://localhost:5173
+Restart=always
+RestartSec=5
+# Log settings - 1 hour retention
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=mellitainment-kiosk
+
+[Install]
 WantedBy=graphical.target
 EOF"
-echo "✅ Frontend service created"
+echo "✅ Kiosk browser service created"
 
 # Enable and Start Services
 echo "🚀 Enabling and starting services..."
@@ -218,9 +243,9 @@ if pidof systemd >/dev/null 2>&1; then
     sudo systemctl daemon-reload
     # Restart journald to apply new log retention settings
     sudo systemctl restart systemd-journald
-    sudo systemctl enable infotainment-backend infotainment-carplay infotainment-frontend
-    echo "✅ Services enabled with 1-hour log retention"
-    echo "ℹ️  Run 'sudo systemctl start infotainment-backend' to start services"
+    sudo systemctl enable infotainment-backend infotainment-carplay infotainment-frontend infotainment-kiosk
+    sudo systemctl restart infotainment-backend infotainment-carplay infotainment-frontend infotainment-kiosk
+    echo "✅ Services enabled and started with 1-hour log retention"
 else
     echo "⚠️  systemd not running - services created but not enabled"
 fi

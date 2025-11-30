@@ -151,7 +151,15 @@ This process is designed to be "Plug & Play". Once set up, the Pi will boot dire
 2.  Copy the project folder to the Pi:
     ```bash
     # Run this from your Mac terminal
-    rsync -avz --progress --exclude 'node_modules' --exclude '.git' --exclude '.venv' --exclude 'venv' --exclude '__pycache__' ~/Code/mellitainment mellis@mellis-pi.local:~/
+    rsync -avz --progress --delete \
+      --exclude 'node_modules' \
+      --exclude '.git' \
+      --exclude '.venv' \
+      --exclude 'venv' \
+      --exclude '__pycache__' \
+      --exclude '.DS_Store' \
+      --exclude '.env.local' \
+      ~/Code/mellitainment/ mellis@mellis-pi.local:~/mellitainment/
     ```
 3.  Run the Setup Script:
     ```bash

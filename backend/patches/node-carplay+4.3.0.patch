@@ -266,3 +266,42 @@ index 20af77f..ac8f331 100644
 +
  //# sourceMappingURL=readable.js.map
 \ No newline at end of file
+diff --git a/node_modules/node-carplay/dist/node/CarplayNode.js b/node_modules/node-carplay/dist/node/CarplayNode.js
+index 35a0200..88e6663 100644
+--- a/node_modules/node-carplay/dist/node/CarplayNode.js
++++ b/node_modules/node-carplay/dist/node/CarplayNode.js
+@@ -85,17 +85,23 @@ export default class CarplayNode {
+         // Find device to "reset" first
+         let device = await this.findDevice();
+         await device.open();
+-        await device.reset();
+-        await device.close();
+-        // Resetting the device causes an unplug event in node-usb
+-        // so subsequent writes fail with LIBUSB_ERROR_NO_DEVICE
+-        // or LIBUSB_TRANSFER_ERROR
+-        console.log('Reset device, finding again...');
+-        await new Promise(resolve => setTimeout(resolve, USB_WAIT_PERIOD_MS));
+-        // ^ Device disappears after reset for 1-3 seconds
+-        device = await this.findDevice();
+-        console.log('found & opening');
+-        await device.open();
++        
++        // Skip reset on Linux/Pi to avoid USB disconnect loop
++        if (process.platform !== 'linux') {
++            await device.reset();
++            await device.close();
++            // Resetting the device causes an unplug event in node-usb
++            // so subsequent writes fail with LIBUSB_ERROR_NO_DEVICE
++            // or LIBUSB_TRANSFER_ERROR
++            console.log('Reset device, finding again...');
++            await new Promise(resolve => setTimeout(resolve, USB_WAIT_PERIOD_MS));
++            // ^ Device disappears after reset for 1-3 seconds
++            device = await this.findDevice();
++            console.log('found & opening');
++            await device.open();
++        } else {
++            console.log('Linux detected - skipping USB reset to avoid disconnect loop');
++        }
+         let initialised = false;
+         try {
+             const { initialise, start, send } = this.dongleDriver;

@@ -67,7 +67,12 @@ function setupCarPlay() {
             switch (type) {
                 case 'video':
                     // payload is a VideoData message object - emit the actual data buffer
-                    eventEmitter.emit('video', payload.data);
+                    if (payload.data && payload.data.length > 0) {
+                        // console.log(`🎥 Video packet size: ${payload.data.length}`);
+                        eventEmitter.emit('video', payload.data);
+                    } else {
+                        console.warn('⚠️ Received empty video packet');
+                    }
                     break;
                 case 'audio':
                     // payload is an AudioData message object - emit the actual data buffer
@@ -89,12 +94,117 @@ function setupCarPlay() {
         };
 
         // Attach Global Listeners (Only once!)
+        // Cache for SPS/PPS headers
+        let spsCache = null;
+        let ppsCache = null;
+        const spsPpsPath = path.join(__dirname, '..', 'config', 'sps_pps.json');
+
+        // Load cached keys from file on startup
+        try {
+            if (fs.existsSync(spsPpsPath)) {
+                const cachedData = JSON.parse(fs.readFileSync(spsPpsPath, 'utf8'));
+                if (cachedData.sps) {
+                    spsCache = Buffer.from(cachedData.sps, 'base64');
+                    console.log('💾 Loaded SPS from file');
+                }
+                if (cachedData.pps) {
+                    ppsCache = Buffer.from(cachedData.pps, 'base64');
+                    console.log('💾 Loaded PPS from file');
+                }
+            }
+        } catch (err) {
+            console.error('⚠️ Failed to load cached SPS/PPS:', err.message);
+        }
+
+        // Helper to save keys
+        const saveKeys = () => {
+            try {
+                const data = {
+                    sps: spsCache ? spsCache.toString('base64') : null,
+                    pps: ppsCache ? ppsCache.toString('base64') : null
+                };
+                fs.writeFileSync(spsPpsPath, JSON.stringify(data, null, 2));
+                console.log('💾 Saved new SPS/PPS keys to file');
+            } catch (err) {
+                console.error('⚠️ Failed to save SPS/PPS keys:', err.message);
+            }
+        };
+
+        // Attach Global Listeners (Only once!)
         eventEmitter.on('video', (data) => {
+            // Check for SPS (Type 7) and PPS (Type 8)
+            if (data && data.length > 0) {
+                let updated = false;
+
+                // Helper to process a potential NAL unit
+                const processNal = (nalData) => {
+                    if (!nalData || nalData.length === 0) return;
+                    const nalType = nalData[0] & 0x1F;
+                    if (nalType === 7) {
+                        if (!spsCache || !nalData.equals(spsCache)) {
+                            console.log('💾 Caching new SPS Header');
+                            spsCache = nalData;
+                            updated = true;
+                        }
+                    } else if (nalType === 8) {
+                        if (!ppsCache || !nalData.equals(ppsCache)) {
+                            console.log('💾 Caching new PPS Header');
+                            ppsCache = nalData;
+                            updated = true;
+                        }
+                    }
+                };
+
+                // Strategy 1: Check for Raw NAL at start
+                processNal(data);
+
+                // Strategy 2: Scan for Annex B Start Codes (00 00 00 01) using native Buffer.indexOf
+                // Only scan if we still need keys or if it's a keyframe (Type 5) which might be preceded by SPS/PPS
+                // Optimization: Don't scan every single packet if we already have keys
+                if (!spsCache || !ppsCache || (data[0] & 0x1F) === 5 || (data.length > 4 && (data[4] & 0x1F) === 5)) {
+                    const startCode = Buffer.from([0, 0, 0, 1]);
+                    let offset = 0;
+
+                    while (offset < data.length) {
+                        const idx = data.indexOf(startCode, offset);
+                        if (idx === -1) break;
+
+                        // Found start code at idx
+                        const start = idx + 4;
+                        if (start >= data.length) break;
+
+                        // Find next start code to determine length
+                        const nextIdx = data.indexOf(startCode, start);
+                        const end = nextIdx === -1 ? data.length : nextIdx;
+
+                        const nal = data.subarray(start, end);
+                        processNal(nal);
+
+                        offset = end;
+                    }
+                }
+
+                if (updated) saveKeys();
+            }
+
             io.emit('video', data);
             // Implicitly streaming if video is flowing
             if (currentStatus.status !== 'streaming') {
                 console.log('✅ VIDEO STREAM STARTED - CarPlay connection successful!');
                 updateStatus({ status: 'streaming' });
+            }
+        });
+
+        // Send cached headers to new clients
+        io.on('connection', (socket) => {
+            console.log('Client connected to CarPlay socket');
+            if (spsCache) {
+                console.log('📤 Sending cached SPS to new client');
+                socket.emit('video', spsCache);
+            }
+            if (ppsCache) {
+                console.log('📤 Sending cached PPS to new client');
+                socket.emit('video', ppsCache);
             }
         });
 

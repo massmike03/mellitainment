@@ -30,12 +30,15 @@ elif [ "$1" == "carplay" ]; then
     echo "Showing: CarPlay only"
     sudo journalctl -u infotainment-carplay -f --no-pager
 elif [ "$1" == "frontend" ]; then
-    echo "Showing: Frontend only"
+    echo "Showing: Frontend (Web Server) only"
     sudo journalctl -u infotainment-frontend -f --no-pager
+elif [ "$1" == "kiosk" ]; then
+    echo "Showing: Kiosk (Browser) only"
+    sudo journalctl -u infotainment-kiosk -f --no-pager
 else
     echo "Showing: All services"
-    echo "Usage: ./view_logs.sh [backend|carplay|frontend]"
+    echo "Usage: ./view_logs.sh [backend|carplay|frontend|kiosk]"
     echo ""
-    # Show all three services, color-coded by identifier
-    sudo journalctl -u infotainment-backend -u infotainment-carplay -u infotainment-frontend -f --no-pager
+    # Show all four services, color-coded by identifier
+    sudo journalctl -u infotainment-backend -u infotainment-carplay -u infotainment-frontend -u infotainment-kiosk -f --no-pager
 fi
